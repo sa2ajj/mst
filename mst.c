@@ -11,7 +11,7 @@
 #include "http.h"
 #include "screenshot.h"
 
-#define MYDATAPATH  "/home/mss/Desktop"
+#define MYDATAPATH  "~/Desktop"
 #define BUFSIZE     20480
 
 struct fileType {
@@ -27,6 +27,18 @@ void mst_init() {
 #if 0
   printf("here we would initalize something\n");
 #endif
+}
+
+char *expand_home(const char *fname) {
+  char *result;
+
+  if (fname != 0 && fname[0] != '\0' && fname[1] != '\0' && fname[0] == '~' && fname[1] == G_DIR_SEPARATOR) {
+    result = g_build_path(G_DIR_SEPARATOR_S, g_get_home_dir(), fname + 2, NULL);
+  } else {
+    result = g_strdup(fname);
+  }
+
+  return result;
 }
 
 const char *getMType(const char *fname) {
