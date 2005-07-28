@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <dirent.h>
 
@@ -95,14 +96,16 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
     if (strcmp(command, "save") == 0) {
       time_t now = time(NULL);
       char fname[32];
-      gchar *fullname;
+      gchar *fullname, *datadir;
       struct tm *lnow = localtime(&now);
       FILE *f;
       GError *error = 0;
 
       strftime(fname, 32, "%Y-%m-%d-%H-%M-%S.png", lnow);
 
-      fullname = g_build_path(G_DIR_SEPARATOR_S, MYDATAPATH, fname, NULL);
+      datadir = expand_home(MYDATAPATH);
+      fullname = g_build_path(G_DIR_SEPARATOR_S, datadir, fname, NULL);
+      g_free(datadir);
 
       f = fopen(fullname, "wb");
 
@@ -110,9 +113,13 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
         const char *message = error == 0 ? "Unable to save screenshot" : error->message;
 
         http_response_printf(res, "<p><b>Error</b>: %s\n<hr/>", message);
-      }
 
-      fclose(f);
+        fclose(f);
+
+        unlink(fullname);
+      } else {
+        fclose(f);
+      }
     }
 
     {
