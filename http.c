@@ -40,6 +40,7 @@ struct HttpRequest  {
   HttpRequestParam *params;
   int               n_params;
   int               n_params_alloc;
+  char             *method;
   char             *uri;
   char             *path_info;
   char             *query_string;
@@ -55,6 +56,16 @@ struct HttpResponse {
   char *data;
   int   data_len;
   int   data_len_alloced;
+};
+
+static char *validMethods[] = {
+  "GET",
+  "PUT",
+  "POST",
+  "HEAD",
+  "DELETE",
+  "OPTIONS",
+  0
 };
 
 /*
@@ -111,9 +122,7 @@ http_request_add_param(HttpRequest *req, char *key, char *value)
  * returns or it will corrupt the parameter table.
  */
 static void
-http_request_parse_params (HttpRequest *req,
-                           char        *data,
-                           int          terminator)
+http_request_parse_params (HttpRequest *req, char *data, int terminator)
 {
   while( *data )
     {
@@ -151,10 +160,7 @@ http_request_parse_params (HttpRequest *req,
     }
 }
 
-
-char*
-http_request_param_get(HttpRequest *req, char *key)
-{
+const char *http_request_param_get(HttpRequest *req, const char *key) {
   int i;
 
   for (i=0; i<req->n_params; i++)
@@ -164,24 +170,21 @@ http_request_param_get(HttpRequest *req, char *key)
   return 0;
 }
 
-char*
-http_request_get_uri(HttpRequest *req)
-{
+const char *http_request_get_method(HttpRequest *req) {
+  return req->method;
+}
+
+const char *http_request_get_uri(HttpRequest *req) {
   return req->uri;
 }
 
-char*
-http_request_get_path_info(HttpRequest *req)
-{
+const char *http_request_get_path_info(HttpRequest *req) {
   return req->path_info;
 }
 
-char*
-http_request_get_query_string(HttpRequest *req)
-{
+const char *http_request_get_query_string(HttpRequest *req) {
   return req->query_string;
 }
-
 
 /*
  * This routine handles a single HTTP request which is coming in on
@@ -201,17 +204,26 @@ http_request_new(void)
   req = malloc(sizeof(HttpRequest));
   memset(req, 0, sizeof(HttpRequest));
 
-  if( fgets(request_line, sizeof(request_line), stdin) == 0 )
+  if (fgets(request_line, sizeof(request_line), stdin) == 0)
     malformed_request();
 
   if ((token = util_extract_token(request_line, &z)) == 0)
     malformed_request();
 
-  if(!(!strcmp(token,"GET") || !strcmp(token,"POST") || !strcmp(token,"HEAD")))
+  for (i = 0 ; validMethods[i] != 0 ; ++i) {
+    if (strcmp(token, validMethods[i]) == 0) {
+      break;
+    }
+  }
+
+  if (validMethods[i] == 0) {
     malformed_request();
+  }
 
   putenv("GATEWAY_INTERFACE=CGI/1.0");
   putenv(util_mprintf("REQUEST_METHOD=%s",token));
+
+  req->method = strdup(token);
 
   if ((token = util_extract_token(z, &z)) == 0)
     malformed_request();
@@ -242,8 +254,7 @@ http_request_new(void)
 
   /* Get all the optional fields that follow the first line.
   */
-  while( fgets(request_line, sizeof(request_line), stdin) )
-    {
+  while (fgets(request_line, sizeof(request_line), stdin)) {
       char *key = 0, *val = 0;
 
       key = util_extract_token(request_line, &val);

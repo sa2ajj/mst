@@ -143,8 +143,8 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
 
 void mst_handle_http_request(HttpRequest *req) {
   HttpResponse *res = http_response_new(req);
-  char         *page = http_request_get_path_info(req); 
-  char         *command  = http_request_get_query_string(req); 
+  const char *page = http_request_get_path_info(req); 
+  const char *command  = http_request_get_query_string(req); 
 
   if (strcmp(page, "/") == 0) {
     mst_process_root(req, res, command);

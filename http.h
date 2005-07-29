@@ -8,10 +8,11 @@ typedef struct HttpRequestParam HttpRequestParam;
 HttpRequest *http_server(const char *name, int iPort);
 
 HttpRequest *http_request_new(void);
-char *http_request_param_get(HttpRequest *req, char *key);
-char *http_request_get_uri(HttpRequest *req);
-char *http_request_get_path_info(HttpRequest *req);
-char *http_request_get_query_string(HttpRequest *req);
+const char *http_request_get_method(HttpRequest *req);
+const char *http_request_param_get(HttpRequest *req, const char *key);
+const char *http_request_get_uri(HttpRequest *req);
+const char *http_request_get_path_info(HttpRequest *req);
+const char *http_request_get_query_string(HttpRequest *req);
 
 HttpResponse *http_response_new(HttpRequest *req);
 
