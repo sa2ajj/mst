@@ -143,42 +143,48 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
 
 void mst_handle_http_request(HttpRequest *req) {
   HttpResponse *res = http_response_new(req);
-  const char *page = http_request_get_path_info(req); 
-  const char *command  = http_request_get_query_string(req); 
 
-  if (strcmp(page, "/") == 0) {
-    mst_process_root(req, res, command);
+  if ((http_request_get_method(req), "GET") != 0) {
+    http_response_set_status(res, 405, "Method Not Allowed");
+    http_response_printf(res, "<html><body>405 Method Not Allowed</body></html>\n");
   } else {
-    size_t flen = strlen(MYDATAPATH) + strlen(page) + 1;
-    char *fname = malloc(flen), *tempo;
-    const char *type;
-    FILE *f = 0;
+    const char *page = http_request_get_path_info(req); 
+    const char *command  = http_request_get_query_string(req); 
 
-    strcpy(fname, MYDATAPATH);
-    strcat(fname, page);
-
-    type = getMType(page);
-
-    tempo = strstr(page, "../");      /* simplistic check if they try to get below the data dir */
-
-    if (tempo == 0 && type != 0 && (f = fopen(fname, "rb")) != 0) {
-      size_t written;
-
-      http_response_set_status(res, 200, "OK");
-      http_response_set_content_type(res, type);
-
-      tempo = malloc(BUFSIZE);
-
-      while((written = fread(tempo, 1, BUFSIZE, f)) > 0) {
-        http_response_write(res, tempo, written);
-      }
-
-      fclose(f);
-
-      free(tempo);
+    if (strcmp(page, "/") == 0) {
+      mst_process_root(req, res, command);
     } else {
-      http_response_set_status(res, 404, "Not Found");
-      http_response_printf(res, "<html><body>404 Not Found</body></html>\n");
+      size_t flen = strlen(MYDATAPATH) + strlen(page) + 1;
+      char *fname = malloc(flen), *tempo;
+      const char *type;
+      FILE *f = 0;
+
+      strcpy(fname, MYDATAPATH);
+      strcat(fname, page);
+
+      type = getMType(page);
+
+      tempo = strstr(page, "../");      /* simplistic check if they try to get below the data dir */
+
+      if (tempo == 0 && type != 0 && (f = fopen(fname, "rb")) != 0) {
+        size_t written;
+
+        http_response_set_status(res, 200, "OK");
+        http_response_set_content_type(res, type);
+
+        tempo = malloc(BUFSIZE);
+
+        while((written = fread(tempo, 1, BUFSIZE, f)) > 0) {
+          http_response_write(res, tempo, written);
+        }
+
+        fclose(f);
+
+        free(tempo);
+      } else {
+        http_response_set_status(res, 404, "Not Found");
+        http_response_printf(res, "<html><body>404 Not Found</body></html>\n");
+      }
     }
   }
 
