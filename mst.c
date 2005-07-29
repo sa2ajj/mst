@@ -112,7 +112,8 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
       if (!get_screenshot(mst_file_write_callback, f, &error) || error != 0) {
         const char *message = error == 0 ? "Unable to save screenshot" : error->message;
 
-        http_response_printf(res, "<p><b>Error</b>: %s\n<hr/>", message);
+        http_response_printf(res, "<p><b>Error</b>: %s\n", message);
+        http_response_printf(res, "<p>File was not created<hr/>", message);
 
         fclose(f);
 
@@ -141,8 +142,8 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
 }
 
 void mst_handle_http_request(HttpRequest *req) {
-  HttpResponse *res      = http_response_new(req);
-  char         *page     = http_request_get_path_info(req); 
+  HttpResponse *res = http_response_new(req);
+  char         *page = http_request_get_path_info(req); 
   char         *command  = http_request_get_query_string(req); 
 
   if (strcmp(page, "/") == 0) {
