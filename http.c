@@ -271,30 +271,19 @@ http_request_new(void)
       for(i=0; key[i]; i++)
         key[i] = tolower(key[i]);
 
-      if(!strcmp(key,"user-agent:"))
-        {
-          putenv(util_mprintf("HTTP_USER_AGENT=%s", val));
-        }
-      else if (!strcmp(key,"content-length:"))
-        {
-          putenv(util_mprintf("CONTENT_LENGTH=%s", val));
-        }
-      else if (!strcmp(key,"referer:"))
-        {
-          putenv(util_mprintf("HTTP_REFERER=%s", val));
-        }
-      else if (!strcmp(key,"host:"))
-        {
-          putenv(util_mprintf("HTTP_HOST=%s", val));
-        }
-      else if (!strcmp(key,"content-type:"))
-        {
-          putenv(util_mprintf("CONTENT_TYPE=%s", val));
-        }
-      else if (!strcmp(key,"cookie:"))
-        {
-          putenv(util_mprintf("HTTP_COOKIE=%s", val));
-        }
+      if(strcmp(key,"user-agent:") == 0) {
+        putenv(util_mprintf("HTTP_USER_AGENT=%s", val));
+      } else if (!strcmp(key,"content-length:")) {
+        putenv(util_mprintf("CONTENT_LENGTH=%s", val));
+      } else if (!strcmp(key,"referer:")) {
+        putenv(util_mprintf("HTTP_REFERER=%s", val));
+      } else if (!strcmp(key,"host:")) {
+        putenv(util_mprintf("HTTP_HOST=%s", val));
+      } else if (!strcmp(key,"content-type:")) {
+        putenv(util_mprintf("CONTENT_TYPE=%s", val));
+      } else if (!strcmp(key,"cookie:")) {
+        putenv(util_mprintf("HTTP_COOKIE=%s", val));
+      }
   }
 
   /* Parse and store QUERY_STRING/POST/Cookie data in req object */
@@ -487,11 +476,11 @@ http_server(const char *name, int iPort)
   inaddr.sin_port = htons(iPort);
   listener = socket(AF_INET, SOCK_STREAM, 0);
 
-  fprintf(stderr,"Firing up %s...\n", name);
+  fprintf(stderr, "Firing up %s...\n", name);
 
-  if( listener < 0 )
+  if (listener < 0)
     {
-      fprintf(stderr,"Can't create a socket\n");
+      fprintf(stderr, "Can't create a socket\n");
       exit(1);
     }
 #ifdef SO_REUSEADDR
@@ -499,11 +488,11 @@ http_server(const char *name, int iPort)
 #endif
   while (n < 10)
     {
-      fprintf(stderr,"Attempting to use port %d .. ", iPort+n);
+      fprintf(stderr, "Attempting to use port %d .. ", iPort+n);
 
       inaddr.sin_port = htons(iPort + n);
 
-      if( bind(listener, (struct sockaddr*)&inaddr, sizeof(inaddr)) < 0 )
+      if (bind(listener, (struct sockaddr*)&inaddr, sizeof(inaddr)) < 0)
         {
           fprintf(stderr,"Failed! \n");
           n++;
@@ -534,33 +523,32 @@ http_server(const char *name, int iPort)
     FD_ZERO(&readfds);
     FD_SET( listener, &readfds);
 
-    if( select( listener+1, &readfds, 0, 0, &delay) )
-      {
-        lenaddr = sizeof(inaddr);
-        connection = accept(listener, (struct sockaddr*)&inaddr, &lenaddr);
-        if(connection>=0) {
-            child = fork();
-            if( child!=0 ) {
-              if( child>0 )
-                nchildren++;
-              close(connection);
-            } else {
-              /* *child*, connect stdin/out to socket */
-              /* then return req object for caller to handle */
-              close(0);
-              dup(connection);
-              close(1);
-              dup(connection);
-              close(2);
-              dup(connection);
-              close(connection);
-              return http_request_new();
-            }
-        }
+    if (select(listener+1, &readfds, 0, 0, &delay)) {
+      lenaddr = sizeof(inaddr);
+      connection = accept(listener, (struct sockaddr*)&inaddr, &lenaddr);
+      if(connection>=0) {
+          child = fork();
+          if( child!=0 ) {
+            if( child>0 )
+              nchildren++;
+            close(connection);
+          } else {
+            /* *child*, connect stdin/out to socket */
+            /* then return req object for caller to handle */
+            close(0);
+            dup(connection);
+            close(1);
+            dup(connection);
+            close(2);
+            dup(connection);
+            close(connection);
+            return http_request_new();
+          }
       }
+    }
 
     /* Bury dead children */
-    while( waitpid(0, 0, WNOHANG)>0 ) nchildren--;
+    while (waitpid(0, 0, WNOHANG)>0) nchildren--;
   }
 
   /* NOT REACHED */
