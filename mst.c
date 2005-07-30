@@ -7,12 +7,13 @@
 
 #include <time.h>
 
+#include <gtk/gtk.h>
 #include <glib/gfileutils.h>
 
 #include "http.h"
 #include "screenshot.h"
 
-#define MYDATAPATH  "~/Desktop"
+#define MYDATAPATH  "~/MyDocs/.images"
 #define BUFSIZE     20480
 
 struct fileType {
@@ -25,9 +26,11 @@ struct fileType {
 };
 
 void mst_init() {
-#if 0
-  printf("here we would initalize something\n");
-#endif
+  if (!gtk_init_check(NULL, NULL)) {
+    fprintf(stderr, "Unable to initialize gtk+\n");
+
+    exit(2);
+  }
 }
 
 char *expand_home(const char *fname) {
@@ -40,6 +43,10 @@ char *expand_home(const char *fname) {
   }
 
   return result;
+}
+
+int myAlphaSort(const void *a, const void *b) {
+  return strcmp((const char *)a, (const char *)b);
 }
 
 const char *getMType(const char *fname) {
@@ -70,6 +77,35 @@ int filter_images(const struct dirent *entry) {
   return result;
 }
 
+int myScanDir(const char *dname, char ***entries) {
+  DIR *dir;
+  int result = 0;
+
+  dir = opendir (dname);
+
+  if (dir != 0) {
+    struct dirent *current;
+
+    while ((current = readdir(dir)) != 0) {
+      if (filter_images(current)) {
+        char *item = strdup(current->d_name);
+
+        *entries = (char **)realloc(*entries, (result + 1) * sizeof(char *));
+
+        (*entries)[result] = item;
+
+        ++result;
+      }
+    }
+
+    if (result != 0) {
+      qsort(*entries, result, sizeof(struct dirent *), myAlphaSort);
+    }
+  }
+
+  return result;
+}
+
 gboolean mst_http_write_callback(const gchar *buf, gsize count, GError **error, gpointer data) {
   http_response_write((HttpResponse *)data, buf, count);
 
@@ -90,22 +126,24 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
 
     get_screenshot(mst_http_write_callback, res, &error);
   } else {
+    gchar *datadir;
+
     http_response_set_content_type(res, "text/html");
     http_response_printf(res, "<html><body><a href=\"/?save\">shot and store</a> | <a href=\"/?get\">shot and get</a><br/><hr/>");
+
+    datadir = expand_home(MYDATAPATH);
 
     if (strcmp(command, "save") == 0) {
       time_t now = time(NULL);
       char fname[32];
-      gchar *fullname, *datadir;
+      gchar *fullname;
       struct tm *lnow = localtime(&now);
       FILE *f;
       GError *error = 0;
 
       strftime(fname, 32, "%Y-%m-%d-%H-%M-%S.png", lnow);
 
-      datadir = expand_home(MYDATAPATH);
       fullname = g_build_path(G_DIR_SEPARATOR_S, datadir, fname, NULL);
-      g_free(datadir);
 
       f = fopen(fullname, "wb");
 
@@ -124,18 +162,20 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
     }
 
     {
-      struct dirent **files = 0;
-      int fileno = scandir (MYDATAPATH, &files, filter_images, alphasort);
+      char **files = 0;
+      int fileno = myScanDir (datadir, &files);
       int i;
 
       http_response_printf(res, "<ul>\n");
 
       for (i = 0 ; i < fileno ; ++i) {
-        http_response_printf(res, "<li><a href=\"%s\">%s</a></li>\n", files[i]->d_name, files[i]->d_name);
+        http_response_printf(res, "<li><a href=\"%s\">%s</a></li>\n", files[i], files[i]);
       }
 
       http_response_printf(res, "</ul>\n");
     }
+
+    g_free(datadir);
   }
 
   http_response_printf(res, "<hr/></body></html>\n");
@@ -144,7 +184,7 @@ void mst_process_root(HttpRequest *req, HttpResponse *res, const char *command) 
 void mst_handle_http_request(HttpRequest *req) {
   HttpResponse *res = http_response_new(req);
 
-  if ((http_request_get_method(req), "GET") != 0) {
+  if (strcmp(http_request_get_method(req), "GET") != 0) {
     http_response_set_status(res, 405, "Method Not Allowed");
     http_response_printf(res, "<html><body>405 Method Not Allowed</body></html>\n");
   } else {
@@ -154,13 +194,16 @@ void mst_handle_http_request(HttpRequest *req) {
     if (strcmp(page, "/") == 0) {
       mst_process_root(req, res, command);
     } else {
-      size_t flen = strlen(MYDATAPATH) + strlen(page) + 1;
+      char *datadir = expand_home(MYDATAPATH);
+      size_t flen = strlen(datadir) + strlen(page) + 1;
       char *fname = malloc(flen), *tempo;
       const char *type;
       FILE *f = 0;
 
-      strcpy(fname, MYDATAPATH);
+      strcpy(fname, datadir);
       strcat(fname, page);
+
+      g_free(datadir);
 
       type = getMType(page);
 
