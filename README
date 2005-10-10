@@ -4,4 +4,8 @@ License: GPL v2 (see the file COPYING)
 
 Purpose: taking screen shots :)
 
-Special features: it works
+Special features: it usually works
+
+Credits:
+  Mathew Allum for didiwiki (the http code was borrowed from there)
+  Tommi Komulainen for the code that actually saves the png file
